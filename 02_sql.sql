@@ -623,12 +623,6 @@ FROM dim_tarifa;
 SELECT COUNT(*) AS total_cocheras
 FROM dim_depot;
 
-
-
--- ============================================================
--- FIN DE LA ESTRUCTURA DEL MODELO
--- ============================================================
-
 -- Comprobar los primeros registros de viajes
 SELECT *
 FROM fact_viajes
@@ -666,3 +660,372 @@ SELECT
 FROM fact_viajes
 GROUP BY dia_semana
 ORDER BY dia_semana;
+
+-- ============================================================
+-- 9. CONSULTAS DE NEGOCIO
+-- ============================================================
+--
+-- Las siguientes consultas responden a preguntas relevantes
+-- para la toma de decisiones de MetroBus.
+
+-- ============================================================
+-- Se utilizan JOIN, funciones de agregación, GROUP BY,
+-- CASE y CTE para demostrar diferentes técnicas SQL.
+-- ============================================================
+
+
+-- ============================================================
+-- 9.1. ¿Qué líneas presentan un mayor retraso medio?
+-- ============================================================
+
+-- 
+-- Se excluyen los valores NULL de retraso.
+-- Se relacionan los viajes con la dimensión de líneas para
+-- obtener el código y nombre de cada línea.
+-- ============================================================
+
+SELECT
+	l.linea_id,
+    l.codigo,
+    l.nombre,
+    COUNT(v.viaje_id) AS total_viajes,
+    ROUND(AVG(v.retraso_salida_min), 2) AS retraso_medio_min
+FROM fact_viajes v
+INNER JOIN dim_linea l
+	ON v.linea_id = l.linea_id
+WHERE v.retraso_salida_min IS NOT NULL
+GROUP BY
+	l.linea_id,
+    l.codigo,
+    l.nombre
+ORDER BY retraso_medio_min DESC;    
+
+-- 
+-- Se analiza el retraso medio por línea. Para ello se relaciona la 
+-- tabla de hechos fact_viajes con dim_linea mediante linea_id, 
+-- se excluyen los retrasos nulos, se agrupa por línea y se calcula tanto 
+-- el número de viajes como el retraso medio. Finalmente se ordena 
+-- las líneas de mayor a menor retraso.
+-- ============================================================
+
+-- ============================================================
+-- 9.2. ¿Qué franjas horarias concentran más pasajeros?
+-- ============================================================
+
+-- 
+-- Permite identificar los periodos de mayor demanda.
+-- ============================================================
+
+SELECT
+	franja_horaria,
+	COUNT(*) AS total_viajes,
+	ROUND(SUM(pasajeros_subidos), 0) AS pasajeros_totales,
+	ROUND(AVG(pasajeros_subidos), 2) AS pasajeros_medios
+FROM fact_viajes
+GROUP BY franja_horaria
+ORDER BY pasajeros_totales DESC;
+
+-- 
+-- Se analiza la demanda de pasajeros por franja horaria.
+-- Para ello se agrupan los viajes de fact_viajes por franja
+-- horaria y se calcula el número total de viajes, los pasajeros
+-- totales y el número medio de pasajeros por viaje.
+-- Finalmente se ordenan las franjas de mayor a menor número
+-- de pasajeros totales para identificar los periodos de mayor demanda.
+-- ============================================================
+
+-- ============================================================
+-- 9.3. ¿Qué vehículos presentan mayor ocupación media?
+-- ============================================================
+
+-- 
+-- Se combina la tabla de viajes con la dimensión de vehículos
+-- para analizar la ocupación según el vehículo.
+-- ============================================================
+
+SELECT
+	v.vehiculo_id,
+    ve.modelo,
+    ve.combustible,
+    ve.capacidad_total,
+    ROUND(AVG(v.ocupacion_pct) * 100, 2) AS ocupacion_media_pct,
+    COUNT(v.viaje_id) AS total_viajes
+FROM fact_viajes v
+INNER JOIN dim_vehiculo ve
+	ON v.vehiculo_id = ve.vehiculo_id
+GROUP BY 
+	v.vehiculo_id,
+    ve.modelo,
+    ve.combustible,
+    ve.capacidad_total
+ORDER BY ocupacion_media_pct DESC;    
+
+-- 
+-- Se analiza la ocupación media por vehículo. Para ello se
+-- relaciona la tabla de hechos fact_viajes con la dimensión
+-- dim_vehiculo mediante vehiculo_id, obteniendo información
+-- adicional sobre el modelo, combustible y capacidad del vehículo.
+-- Se calcula la ocupación media y el número total de viajes
+-- realizados por cada vehículo. Finalmente se ordenan los
+-- vehículos de mayor a menor ocupación media.
+-- ============================================================
+
+-- ============================================================
+-- 9.4. ¿Qué tipo de combustible está asociado a un menor
+--      consumo medio?
+-- ============================================================
+
+-- 
+-- Permite comparar el comportamiento de los diferentes tipos
+-- de combustible de la flota.
+-- ============================================================
+
+SELECT
+    ve.combustible,
+    COUNT(v.viaje_id) AS total_viajes,
+    ROUND(AVG(v.consumo), 2) AS consumo_medio,
+    ROUND(SUM(v.consumo), 2) AS consumo_total
+FROM fact_viajes v
+INNER JOIN dim_vehiculo ve
+    ON v.vehiculo_id = ve.vehiculo_id
+WHERE v.consumo IS NOT NULL
+	AND ve.combustible IS NOT NULL
+GROUP BY ve.combustible
+ORDER BY consumo_medio ASC;
+
+-- 
+-- Se analiza el consumo medio de los viajes según el tipo de
+-- combustible. Para ello se relaciona fact_viajes con
+-- dim_vehiculo mediante vehiculo_id y se excluyen los viajes
+-- que no tienen consumo o tipo de combustible informado.
+-- Se calcula el número de viajes, el consumo medio y el consumo
+-- total para cada tipo de combustible. Finalmente se ordenan
+-- los resultados de menor a mayor consumo medio para identificar
+-- los tipos de combustible asociados a un menor consumo.
+-- ============================================================
+
+-- ============================================================
+-- COMPROBACIÓN DE CALIDAD DE DATOS
+-- ============================================================
+-- Se comprueban los vehículos que no tienen informado
+-- el tipo de combustible.
+-- ============================================================
+
+SELECT
+    ve.vehiculo_id,
+    ve.modelo,
+    COUNT(v.viaje_id) AS total_viajes
+FROM fact_viajes v
+INNER JOIN dim_vehiculo ve
+    ON v.vehiculo_id = ve.vehiculo_id
+WHERE ve.combustible IS NULL
+GROUP BY
+    ve.vehiculo_id,
+    ve.modelo;
+    
+--    
+-- Se detectó un vehículo sin tipo de combustible informado 
+-- (vehiculo_id = 32), asociado a 1.190 viajes. Dado que no 
+-- existe información suficiente para determinar el combustible 
+-- de forma fiable, se mantiene el valor NULL y se excluyen 
+-- estos registros del análisis comparativo por tipo de combustible.
+-- ============================================================
+
+-- ============================================================
+-- 9.5. ¿Qué líneas presentan mayor número de incidencias?
+-- ============================================================
+--
+-- Se relacionan las incidencias con las líneas para detectar
+-- aquellas con mayor frecuencia de incidencias.
+-- ============================================================
+
+SELECT
+    l.linea_id,
+    l.codigo,
+    l.nombre,
+    COUNT(i.incidencia_id) AS total_incidencias
+
+FROM fact_incidencias i
+
+INNER JOIN dim_linea l
+    ON i.linea_id = l.linea_id
+
+GROUP BY
+    l.linea_id,
+    l.codigo,
+    l.nombre
+
+ORDER BY total_incidencias DESC;
+
+
+--
+-- Se analiza el número de incidencias por línea. Para ello se
+-- relaciona la tabla de hechos fact_incidencias con dim_linea
+-- mediante linea_id, obteniendo el código y nombre de cada línea.
+-- Se calcula el número total de incidencias de cada línea y se
+-- ordenan los resultados de mayor a menor número de incidencias.
+-- ============================================================
+
+-- ============================================================
+-- 9.6. ¿Qué vehículos tienen mayor coste de mantenimiento?
+-- ============================================================
+--
+-- Permite identificar vehículos que pueden requerir una
+-- revisión de su rentabilidad o sustitución.
+-- ============================================================
+
+SELECT
+    ve.vehiculo_id,
+    ve.modelo,
+    ve.combustible,
+    COUNT(m.mantenimiento_id) AS intervenciones,
+    ROUND(SUM(m.coste_eur), 2) AS coste_mantenimiento_total,
+    ROUND(AVG(m.coste_eur), 2) AS coste_medio_intervencion
+FROM fact_mantenimiento m
+INNER JOIN dim_vehiculo ve
+    ON m.vehiculo_id = ve.vehiculo_id
+GROUP BY
+    ve.vehiculo_id,
+    ve.modelo,
+    ve.combustible
+ORDER BY coste_mantenimiento_total DESC;
+
+--
+-- Se analiza el coste de mantenimiento acumulado por vehículo.
+-- Para ello se relaciona fact_mantenimiento con dim_vehiculo
+-- mediante vehiculo_id, obteniendo información adicional sobre
+-- el modelo y el tipo de combustible.
+-- Se calcula el número de intervenciones, el coste total de
+-- mantenimiento y el coste medio por intervención para cada
+-- vehículo. Finalmente se ordenan los resultados de mayor a
+-- menor coste total de mantenimiento.
+-- ============================================================
+
+-- ============================================================
+-- 9.7. ¿Cuál es el porcentaje de viajes completados por línea?
+-- ============================================================
+--
+-- Permite detectar líneas con una menor tasa de cumplimiento
+-- del servicio.
+-- ============================================================
+
+SELECT
+    l.codigo,
+    l.nombre,
+    COUNT(v.viaje_id) AS total_viajes,
+
+    SUM(
+        CASE
+            WHEN v.viaje_completado = TRUE THEN 1
+            ELSE 0
+        END
+    ) AS viajes_completados,
+
+    ROUND(
+        100 * SUM(
+            CASE
+                WHEN v.viaje_completado = TRUE THEN 1
+                ELSE 0
+            END
+        ) / COUNT(v.viaje_id),
+        2
+    ) AS porcentaje_completado
+
+FROM fact_viajes v
+
+INNER JOIN dim_linea l
+    ON v.linea_id = l.linea_id
+
+GROUP BY
+    l.codigo,
+    l.nombre
+
+ORDER BY porcentaje_completado ASC;
+
+--
+-- Se analiza la tasa de cumplimiento de los viajes por línea.
+-- Para ello se relaciona fact_viajes con dim_linea mediante
+-- linea_id, obteniendo el código y nombre de cada línea.
+-- Se calcula el número total de viajes y, mediante CASE y SUM,
+-- el número de viajes completados. A partir de estos valores
+-- se obtiene el porcentaje de viajes completados para cada línea.
+-- Finalmente se ordenan los resultados de menor a mayor
+-- porcentaje de cumplimiento para identificar las líneas con
+-- menor tasa de servicio completado.
+-- ============================================================
+
+-- ============================================================
+-- 9.8. ¿Qué vehículos combinan mayor coste de mantenimiento
+--      y mayor número de incidencias?
+-- ============================================================
+--
+-- Se utiliza una CTE para combinar dos indicadores de riesgo
+-- operativo:
+--
+--   - número de incidencias
+--   - coste total de mantenimiento
+--
+-- El objetivo es identificar vehículos que podrían requerir
+-- una revisión específica.
+-- ============================================================
+
+WITH incidencias_vehiculo AS (
+
+    SELECT
+        vehiculo_id,
+        COUNT(*) AS total_incidencias
+    FROM fact_incidencias
+    GROUP BY vehiculo_id
+
+),
+
+mantenimiento_vehiculo AS (
+
+    SELECT
+        vehiculo_id,
+        SUM(coste_eur) AS coste_mantenimiento
+    FROM fact_mantenimiento
+    GROUP BY vehiculo_id
+
+)
+
+SELECT
+    ve.vehiculo_id,
+    ve.modelo,
+    ve.combustible,
+
+    COALESCE(i.total_incidencias, 0)
+        AS total_incidencias,
+
+    ROUND(
+        COALESCE(m.coste_mantenimiento, 0),
+        2
+    ) AS coste_mantenimiento
+
+FROM dim_vehiculo ve
+
+LEFT JOIN incidencias_vehiculo i
+    ON ve.vehiculo_id = i.vehiculo_id
+
+LEFT JOIN mantenimiento_vehiculo m
+    ON ve.vehiculo_id = m.vehiculo_id
+
+ORDER BY
+    total_incidencias DESC,
+    coste_mantenimiento DESC;
+    
+--
+-- Se identifican los vehículos que podrían requerir una revisión
+-- específica combinando información de incidencias y mantenimiento.
+-- Para ello se crean dos consultas temporales (CTE): una que
+-- resume el número de incidencias por vehículo y otra que calcula
+-- el coste total de mantenimiento por vehículo.
+-- Posteriormente, ambas se relacionan con dim_vehiculo mediante
+-- vehiculo_id utilizando LEFT JOIN, de forma que se mantengan
+-- todos los vehículos de la flota, incluso aquellos sin incidencias
+-- o sin registros de mantenimiento. Los valores NULL se sustituyen
+-- por cero mediante COALESCE. Finalmente, los vehículos se ordenan
+-- de mayor a menor número de incidencias y, en caso de empate,
+-- de mayor a menor coste de mantenimiento.
+-- ============================================================    
+
