@@ -196,3 +196,131 @@ Durante el análisis exploratorio se identificaron diferentes problemas de calid
 > **Nota:** Los valores `-1`, `-2` y `-3` de `retraso_salida_min` se mantienen porque pueden representar salidas ligeramente adelantadas. El valor `-99` se trata como un código especial de dato desconocido.
 
 ---
+
+# 4. Definición formal de KPIs
+
+Los siguientes indicadores serán utilizados posteriormente en el cuadro de mando de MetroBus.
+
+## KPI 1 — Retraso medio de salida
+
+**Fórmula:**
+
+```text
+AVG(retraso_salida_min)
+```
+**Fuente de datos:** fact_viajes.retraso_salida_min
+
+**Criterios de exclusión:** valores NULL y registros con retraso_salida_min = -99.
+
+**Interpretación:** mide el retraso medio de las expediciones respecto a la hora de salida programada.
+
+**Responsable de validación:** Responsable de Operaciones.
+
+## KPI 2 — Porcentaje de viajes completados
+
+**Fórmula:**
+
+```text
+(Viajes completados / Total de viajes) × 100
+```
+**Fuente:** fact_viajes.viaje_completado
+
+**Criterios de exclusión:** ninguno.
+
+**Interpretación:** mide el nivel de cumplimiento del servicio programado.
+
+**Responsable de validación:** Responsable de Operaciones.
+
+## KPI 3 — Ocupación media
+
+**Fórmula:**
+
+```text
+AVG(ocupacion_pct) × 100
+```
+**Fuente:** fact_viajes.ocupacion_pct
+
+**Criterios de exclusión:** valores NULL.
+
+**Interpretación:** mide el nivel medio de utilización de la capacidad de los vehículos.
+
+**Responsable de validación:** Responsable de Planificación.
+
+## KPI 4 — Número de incidencias
+
+**Fórmula:**
+
+```text
+COUNT(incidencia_id)
+```
+**Fuente:** fact_incidencias.incidencia_id
+
+**Criterios de exclusión:** ninguno.
+
+**Interpretación:** cuantifica las incidencias registradas durante la operación.
+
+**Responsable de validación:** Responsable de Operaciones y Mantenimiento.
+
+## KPI 5 — Coste total de mantenimiento
+
+**Fórmula:**
+
+```text
+SUM(coste_eur)
+```
+**Fuente:** fact_mantenimiento.coste_eur
+
+**Criterios de exclusión:** valores NULL.
+
+**Interpretación:** representa el coste acumulado de las intervenciones de mantenimiento.
+
+**Responsable de validación:** Responsable de Mantenimiento y Finanzas.
+
+## KPI 6 — Consumo medio
+
+**Fórmula:**
+
+```text
+AVG(consumo)
+```
+**Fuente:** fact_viajes.consumo
+
+**Criterios de exclusión:** valores NULL.
+
+**Interpretación:** permite evaluar y comparar la eficiencia de la flota.
+
+**Responsable de validación:** Responsable de Flota.
+
+## KPI 7 — Coste medio de mantenimiento por intervención
+
+**Fórmula:**
+
+```text
+SUM(coste_eur) / COUNT(mantenimiento_id)
+```
+**Fuente:** fact_mantenimiento.coste_eur y fact_mantenimiento.mantenimiento_id
+
+**Criterios de exclusión:** intervenciones cuyo coste sea NULL.
+
+**Interpretación:** permite conocer el coste medio de las intervenciones de mantenimiento.
+
+**Responsable de validación:** Responsable de Mantenimiento.
+
+# 5. Criterios generales de calidad
+
+Durante el proyecto se aplican los siguientes principios:
+
+- No se sustituyen valores ausentes por valores inventados.
+- Los códigos anómalos se documentan antes de transformarlos.
+- Las categorías se normalizan para evitar duplicidades semánticas.
+- Las claves primarias deben ser únicas.
+- Las claves foráneas deben mantener la integridad referencial.
+- Las reglas de negocio prevalecen sobre la detección estadística de outliers.
+- Las transformaciones realizadas durante el proceso ETL deben ser reproducibles.
+- Las métricas utilizadas en el dashboard deben seguir las definiciones establecidas en este documento.
+
+# 6. Resumen
+
+La fase de gobierno del dato permite documentar la estructura del modelo, los principales problemas de calidad encontrados y las decisiones tomadas durante la preparación de los datos.
+
+El resultado establece una base común para la construcción del cuadro de mando y facilita la trazabilidad de las métricas utilizadas en el análisis.
