@@ -125,7 +125,7 @@ El objetivo es garantizar que los datos utilizados para el análisis y el cuadro
 | `nombre` | VARCHAR | Nombre del conductor | Texto | — |
 | `anno_incorporacion` | INT | Año de incorporación | Año razonable | — |
 | `antiguedad_anos` | DECIMAL | Antigüedad del conductor | ≥ 0 | Presenta un valor nulo |
-| `turno_habitual` | VARCHAR | Turno habitual | Valores definidos | — |
+| `turno_habitual` | VARCHAR | Turno habitual | `Manana (06-14h)`, `Tarde (14-22h)`, `Noche (22-06h)`, `Partido` | Se detectó el valor `manana` como inconsistencia de formato. Se normaliza a `Manana (06-14h)`. El turno `Partido` se mantiene como categoría válida, ya que el dataset no proporciona los intervalos horarios concretos. |
 | `depot_id` | INT | Cochera asignada | > 0 | FK a `dim_depot` |
 | `formacion` | VARCHAR | Formación recibida | Categorías definidas | — |
 | `licencia_tipo` | VARCHAR | Tipo de licencia | Categorías definidas | — |
