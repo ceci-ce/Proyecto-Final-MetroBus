@@ -144,7 +144,7 @@ El objetivo es garantizar que los datos utilizados para el análisis y el cuadro
 | `tipo` | VARCHAR | Tipo de parada | Categorías definidas | — |
 | `latitud` | DECIMAL | Latitud geográfica | Rango geográfico válido | — |
 | `longitud` | DECIMAL | Longitud geográfica | Rango geográfico válido | — |
-| `accesible_silla` | VARCHAR | Accesibilidad para silla de ruedas | Valores definidos | — |
+| `accesible_silla` | VARCHAR | Indica si la parada es accesible para silla de ruedas | 1 / 0 / NULL | En el CSV original el campo era booleano (True/False). Durante el ETL se transformó a 1/0 y se mantiene como texto (VARCHAR) en MySQL |
 | `marquesina` | BOOLEAN | Dispone de marquesina | TRUE/FALSE | — |
 | `panel_informacion` | BOOLEAN | Dispone de panel informativo | TRUE/FALSE | — |
 | `activa` | BOOLEAN | Indica si está activa | TRUE/FALSE | — |
@@ -189,6 +189,7 @@ Durante el análisis exploratorio se identificaron diferentes problemas de calid
 | `fact_viajes` | `dia_semana` | Inconsistencia de formato | 30 | Normalizar el formato | Evita duplicidades al agrupar por día |
 | `fact_viajes` | `fecha` | Tipo de dato incorrecto | 50.000 | Convertir a `DATE` | Permite realizar correctamente los análisis temporales |
 | `dim_parada`  | `barrio` | Inconsistencia en la capitalización de valores categóricos | 2 | Normalizar los valores `BARRIO NORTE` → `Barrio Norte` y `centro` → `Centro` | Unificar la nomenclatura de los barrios para evitar categorías duplicadas y garantizar la consistencia del dato en consultas y visualizaciones.
+| `dim_parada`  | `accesible_silla` | Cambio de formato respecto al origen | — | Mantener los valores `1/0` como `VARCHAR` | El CSV original utilizaba valores booleanos `(True/False)`. Durante el ETL se transformaron a `1/0` para adaptarlos al modelo implementado en MySQL. Se mantiene el formato actual para preservar la coherencia con el modelo ya cargado en Power BI.
 | `dim_vehiculo` | `combustible` | Inconsistencia categórica | 1 | Normalizar `diesel` a `Diesel` | Evita considerar la misma categoría como dos valores diferentes |
 | dim_conductor | turno_habitual | Inconsistencia de formato/categoría | 1 | Normalizar `manana` a `Manana (06-14h)` | Ambos valores representan el mismo turno. La normalización evita duplicar categorías en los análisis y visualizaciones. |
 | `fact_mantenimiento` | `coste_eur` | Valores negativos | 25 | Transformar a `NULL` | Un coste negativo incumple la regla de negocio `coste_eur >= 0` |
