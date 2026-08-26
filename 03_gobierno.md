@@ -189,6 +189,7 @@ Durante el análisis exploratorio se identificaron diferentes problemas de calid
 | `fact_viajes` | `dia_semana` | Inconsistencia de formato | 30 | Normalizar el formato | Evita duplicidades al agrupar por día |
 | `fact_viajes` | `fecha` | Tipo de dato incorrecto | 50.000 | Convertir a `DATE` | Permite realizar correctamente los análisis temporales |
 | `dim_vehiculo` | `combustible` | Inconsistencia categórica | 1 | Normalizar `diesel` a `Diesel` | Evita considerar la misma categoría como dos valores diferentes |
+| dim_conductor | turno_habitual | Inconsistencia de formato/categoría | 1 | Normalizar `manana` a `Manana (06-14h)` | Ambos valores representan el mismo turno. La normalización evita duplicar categorías en los análisis y visualizaciones. |
 | `fact_mantenimiento` | `coste_eur` | Valores negativos | 25 | Transformar a `NULL` | Un coste negativo incumple la regla de negocio `coste_eur >= 0` |
 | `fact_viajes` | `pasajeros_subidos` / `capacidad_total` | Incoherencia de capacidad | 0 | No modificar | No existen viajes con pasajeros por encima de la capacidad |
 | Todas | Claves foráneas | Integridad referencial | 0 huérfanos | No modificar | Todas las referencias entre tablas son válidas |
